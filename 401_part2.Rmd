@@ -1,0 +1,60 @@
+---
+title: "401_part2"
+author: "YZL"
+date: "10/13/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyquant)
+library(readr)
+library(dplyr)
+library(tidyverse)
+library(car)
+library(lubridate)
+library(stargazer)
+library(tseries)
+library(xts)
+```
+```{r}
+Predictions_data <- read.csv("/Users/yizhenglu/Downloads/Stock essay/Predictions data.csv")
+```
+
+```{r}
+Predictions_data<-Predictions_data%>%
+  select(-c(3,9,11))
+```
+
+
+
+```{r}
+Predictions_data$Date<-as.Date(Predictions_data$Date,"%y/%m/%d")
+```
+
+
+```{r}
+Predictions_data <- mutate(Predictions_data, comparison = Close - lag(Close))
+```
+
+```{r}
+AAPL<- Predictions_data%>%
+  filter(Ticker =="AAPL")
+
+AAPL$Date<-as.Date(AAPL$Date,"%y/%m/%d")
+
+AAPL$Date <-as.POSIXlt(AAPL$Date,
+                         format="%y/%m/%d")
+
+Close <-xts(AAPL[,6],order.by=AAPL$Date)
+
+plot(Close)
+```
+```{r}
+library(COVID19)
+x <- covid19("USA")
+```
+
