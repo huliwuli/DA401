@@ -19,10 +19,14 @@ library(lubridate)
 library(stargazer)
 library(tseries)
 library(xts)
+library(caret)
+library(e1071)
 ```
 ```{r}
 Predictions_data <- read.csv("/Users/yizhenglu/Downloads/Stock essay/Predictions data.csv")
 ```
+
+
 
 ```{r}
 Predictions_data<-Predictions_data%>%
@@ -30,31 +34,201 @@ Predictions_data<-Predictions_data%>%
 ```
 
 
+  
+```{r}
+#Predictions_data$Date<-as.Date(Predictions_data$Date,"%y/%m/%d")
+```
 
 ```{r}
-Predictions_data$Date<-as.Date(Predictions_data$Date,"%y/%m/%d")
+#The previous Rmd file, I defined the predictor. Thrrough, Close price - mince Prevous Close Price.
+#In this section, I will change the "Price_change" to Up or down.
+#PriceChange	<- ifelse(PriceChange	> 0,	"UP",	"DOWN")
+
+Predictions_data$Class	<- ifelse(Predictions_data$PriceChange	> 0,	"1",	"0")
 ```
 
 
-```{r}
-Predictions_data <- mutate(Predictions_data, comparison = Close - lag(Close))
-```
+
+
 
 ```{r}
 AAPL<- Predictions_data%>%
   filter(Ticker =="AAPL")
 
-AAPL$Date<-as.Date(AAPL$Date,"%y/%m/%d")
+AAPL<-AAPL%>%
+    select(Class,	RSI_Close,EMAcross_Close,	MACDsignal,	SMI,	stochWPR,	ADX,	CCI,	CMO,	ROC,obv,Date)
+#AAPL$Date<-as.Date(AAPL$Date,"%y/%m/%d")
 
-AAPL$Date <-as.POSIXlt(AAPL$Date,
-                         format="%y/%m/%d")
+#AAPL$Date <-as.POSIXlt(AAPL$Date,
+#                         format="%y/%m/%d")
 
-Close <-xts(AAPL[,6],order.by=AAPL$Date)
+#Close <-xts(AAPL[,6],order.by=AAPL$Date)
 
-plot(Close)
+#plot(Close)
+```
+
+
+
+```{r}
+set.seed(1)
+AAPL_train_set = createDataPartition(AAPL$Class, p = 0.75, list = FALSE)
+AAPL_train = AAPL[AAPL_train_set,]
+AAPL_test = AAPL[-AAPL_train_set,]
+
+```
+
+
+```{r}
+train_control <- trainControl(method="repeatedcv", number=10, repeats=3)
 ```
 ```{r}
-library(COVID19)
-x <- covid19("USA")
+SVM_cv<- train(Class	~RSI_Close+EMAcross_Close+	MACDsignal+	SMI+	stochWPR+	ADX+	CCI+	CMO+	ROC+obv, data = AAPL_train, method = "svmRadial", trControl = train_control, preProcess = c("center","scale"), tuneLength = 10)
 ```
+
+
+```{r}
+AAPL_test_SVM =SVM_cv%>%
+  predict(AAPL_test)
+#Evaluate predictions
+library(pROC) #For building ROC curve
+AAPL_test$Class<-as.character(AAPL_test$Class)
+ValidRoc = roc(as.numeric(AAPL_test$Class),as.numeric(AAPL_test_SVM))
+plot.roc(ValidRoc) #Plots ROC curve
+ValidRoc$auc  #Area Under the Curve
+```
+
+```{r}
+confusionMatrix(as.factor(AAPL_test_SVM),as.factor(AAPL_test$Class))
+```
+
+```{r}
+Amazon<- Predictions_data%>%
+  filter(Ticker =="AMZN")
+
+Amazon<-Amazon%>%
+    select(Class,	RSI_Close,EMAcross_Close,	MACDsignal,	SMI,	stochWPR,	ADX,	CCI,	CMO,	ROC,obv,Date)
+```
+
+
+```{r}
+set.seed(1)
+AMZN_train_set = createDataPartition(AAPL$Class, p = 0.75, list = FALSE)
+AMZN_train = AAPL[Amazon_train_set,]
+AMZN_test = AAPL[-Amazon_train_set,]
+
+```
+
+
+```{r}
+train_control <- trainControl(method="repeatedcv", number=10, repeats=3)
+```
+```{r}
+Amazon_SVM_cv<- train(Class	~RSI_Close+EMAcross_Close+	MACDsignal+	SMI+	stochWPR+	ADX+	CCI+	CMO+	ROC+obv, data = AMZN_train, method = "svmRadial", trControl = train_control, preProcess = c("center","scale"), tuneLength = 10)
+```
+
+```{r}
+Amazon_test_SVM =Amazon_SVM_cv%>%
+  predict(AMZN_test)
+confusionMatrix(as.factor(Amazon_test_SVM),as.factor(AMZN_test$Class))
+```
+```{r}
+SBUX<- Predictions_data%>%
+  filter(Ticker =="SBUX")
+
+SBUX<-SBUX%>%
+    select(Class,	RSI_Close,EMAcross_Close,	MACDsignal,	SMI,	stochWPR,	ADX,	CCI,	CMO,	ROC,obv,Date)
+```
+
+
+```{r}
+set.seed(1)
+SBUX_train_set = createDataPartition(SBUX$Class, p = 0.75, list = FALSE)
+SBUX_train = SBUX[Amazon_train_set,]
+SBUX_test = SBUX[-Amazon_train_set,]
+
+```
+
+
+```{r}
+train_control <- trainControl(method="repeatedcv", number=10, repeats=3)
+```
+```{r}
+SBUX_SVM_cv<- train(Class	~RSI_Close+EMAcross_Close+	MACDsignal+	SMI+	stochWPR+	ADX+	CCI+	CMO+	ROC+obv, data = SBUX_train, method = "svmRadial", trControl = train_control, preProcess = c("center","scale"), tuneLength = 10)
+```
+
+
+```{r}
+SBUX_test_SVM =SBUX_SVM_cv%>%
+  predict(SBUX_test)
+confusionMatrix(as.factor(SBUX_test_SVM),as.factor(SBUX_test$Class))
+```
+
+```{r}
+xgbgrid <- expand.grid(nrounds = 100,#程序运行次数
+                       max_depth = 10,#树的深度
+                       eta = 0.05,
+                       gamma = 0.01,
+                       colsample_bytree = 0.75,
+                       min_child_weight = 0,
+                       subsample = 0.5)
+
+ctrl <- trainControl(method="repeatedcv", 
+                     number=10, 
+                     repeats=5,
+                     savePredictions=TRUE, 
+                     classProbs=FALSE,
+                     summaryFunction = multiClassSummary)
+```
+#AAPL XGB
+```{r}
+AAPL_xgb_model = train(Class~RSI_Close+EMAcross_Close+	MACDsignal+	SMI+	stochWPR+	ADX+	CCI+	CMO+	ROC+obv, data = AAPL_train
+                  ,  
+                  trControl =ctrl ,
+                    method = "xgbTree",
+                  tuneGrid = xgbgrid)
+
+```
+
+```{r}
+AAPL_test_Xgb =AAPL_xgb_model%>%
+  predict(AAPL_test)
+
+confusionMatrix(as.factor(AAPL_test_Xgb),as.factor(AAPL_test$Class))
+
+```
+#AMZN XGB
+```{r}
+AMZN_xgb_model = train(Class~RSI_Close+EMAcross_Close+	MACDsignal+	SMI+	stochWPR+	ADX+	CCI+	CMO+	ROC+obv, data = AMZN_train
+                  ,  
+                  trControl =ctrl ,
+                    method = "xgbTree",
+                  tuneGrid = xgbgrid)
+
+```
+
+```{r}
+AMZN_test_Xgb =AMZN_xgb_model%>%
+  predict(AMZN_test)
+
+confusionMatrix(as.factor(AMZN_test_Xgb),as.factor(AMZN_test$Class))
+
+```
+
+#SBUX XGB
+```{r}
+
+SBUX_xgb_model = train(Class~RSI_Close+EMAcross_Close+	MACDsignal+	SMI+	stochWPR+	ADX+	CCI+	CMO+	ROC+obv, data = SBUX_train
+                  ,  
+                  trControl =ctrl ,
+                    method = "xgbTree",
+                  tuneGrid = xgbgrid)
+
+```
+
+```{r}
+SBUX_test_Xgb =SBUX_xgb_model%>%
+  predict(SBUX_test)
+confusionMatrix(as.factor(SBUX_test_Xgb),as.factor(SBUX_test$Class))
+```
+
 

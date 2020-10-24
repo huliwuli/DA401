@@ -16,6 +16,9 @@ library(tidyverse)
 library(car)
 library(lubridate)
 library(stargazer)
+library(ggplot2)
+library(zoo)
+library(gridExtra)
 ```
 
 
@@ -52,7 +55,7 @@ RSI_Close	<- RSI(daily_price_2014[,c("Close")],	n	= 3)
 #	5-period	exponential	moving	average	(EMA)
 EMA_Close	<- EMA(daily_price_2014[,c("Close")],	n	= 5)
 # difference	between	the	Close	price	and	our	5-period	EMA
-EMAcross_Close	<- daily_price_2014[]	- EMA_Close
+EMAcross_Close	<- daily_price_2014[,c("Close")]	- EMA_Close
 
 #Calculate	a	MACD	with	standard	parameters
 macd <- MACD(daily_price_2014[,c("Close")], nFast=12, nSlow=26,
@@ -66,6 +69,7 @@ SMI<-SMI(daily_price_2014[,c("High","Low","Close")], n = 13, nFast = 2, nSlow = 
 SMI	<- SMI[,	1]
 ```
 
+
 ```{r}
 #Commodity	Channel	Index	with	standard	parameters
 CCI	<- CCI(daily_price_2014[,c("High","Low","Close")],	n	= 14)
@@ -73,28 +77,25 @@ CCI	<- CCI(daily_price_2014[,c("High","Low","Close")],	n	= 14)
 CMO	<- CMO(daily_price_2014[,c("Close")],	n	= 14)
 ROC	<- ROC(daily_price_2014[,c("Close")],	n	= 2)
 ```
-
-```{r}
-PriceChange	<- daily_price_2014[,c("Close")]	- daily_price_2014[,c("Open")]
-Class	<- ifelse(PriceChange	> 0,	"UP",	"DOWN")
-```
-
 ```{r}
 daily_ADX  <- ADX(daily_price_2014[,c("High","Low","Close")],n=14)
-
-stochOsc <- stoch(daily_price_2014[,c("High","Low","Close")])
 obv <- OBV(daily_price_2014[,"Close"], daily_price_2014[,"Volume"])
 stochWPR<- WPR(daily_price_2014[,c("High","Low","Close")],n=14)
-
-```
-
-```{r}
-cbind_daily<- cbind(daily_price_2014,RSI_Close,EMAcross_Close,MACDsignal,SMI,CCI,CMO,ROC,Class,daily_ADX,obv,stochWPR)
+  
 ```
 ```{r}
-idx = which(duplicated(names(cbind_daily)))
-cbind_daily = cbind_daily[,-idx]
+#predictors
+daily_price_2014<- mutate(daily_price_2014, PriceChange = Close - lag(Close))
 ```
+
+
+
+```{r}
+cbind_daily<- cbind(daily_price_2014,RSI_Close,EMAcross_Close,MACDsignal,SMI,CCI,CMO,ROC,daily_ADX,obv,stochWPR)
+```
+
+
+
 
 ```{r}
 cbind_daily_2015<-cbind_daily%>%
@@ -249,12 +250,47 @@ Inflation<-select(Inflation,-c(1,2,4))
 ```
 
 
+
+
+```{r}
+
+```
+
 ```{r}
 CPI_UNRATE_Oil<-merge(CPI_rate,UNRATE, by=c("Fiscal.Period","year"))
 CPI_UNRATE_Oil<-merge(oil_price,CPI_UNRATE_Oil,by=c("Fiscal.Period","year"))
 CPI_UNRATE_Oil_EX<-merge(ex_rate,CPI_UNRATE_Oil,by=c("Fiscal.Period","year"))
 CPI_UNRATE_Oil_EX_GDP <-merge(GDP,CPI_UNRATE_Oil_EX,by=c("Fiscal.Period","year"))
 CPI_UNRATE_Oil_EX_GDP_Inf <-merge(Inflation,CPI_UNRATE_Oil_EX_GDP,by=c("Fiscal.Period","year"))
+```
+```{r}
+#Combine year and Fiscal.Period for graph
+CPI_UNRATE_Oil_EX_GDP_Inf<-within(CPI_UNRATE_Oil_EX_GDP_Inf, YQ <- paste(year, Fiscal.Period, sep=''))
+
+```
+
+
+```{r}
+CPI_UNRATE_Oil_EX_GDP_Inf$YQ <- as.Date(as.yearqtr(CPI_UNRATE_Oil_EX_GDP_Inf$YQ))
+
+
+plot1<-ggplot(CPI_UNRATE_Oil_EX_GDP_Inf) +
+    geom_line(aes(x=YQ, y=Inflation,color="Inflation"))+
+    geom_line(aes(x=YQ, y=CPI_Quarter,color="CPI"))+
+    geom_line(aes(x=YQ,y=UNRATE,color="Unemployment "))+
+    geom_line(aes(x=YQ,y=log(Oil_price_quarter),color="log of Oil Price "))+
+    geom_line(aes(x=YQ,y=ex_rate,color="Ex_rate "))+
+    ylab("Values")+
+    ggtitle("Variables Trend From 2015 Q1 to 2020Q2")+
+  xlab("Years and Quarter")
+
+plot2<-ggplot(CPI_UNRATE_Oil_EX_GDP_Inf) +
+  geom_line(aes(x=YQ,y=GDP,color= "GDP"))+
+  ylab("Values")+
+  ggtitle("GDP Trend From 2015 Q1 to 2020Q2")+
+  xlab("Years and Quarter")
+grid.arrange(plot1, plot2)
+  
 ```
 
 
@@ -278,7 +314,7 @@ complete_2015<-as.data.frame.matrix(complete_2015)
 
 ```{r}
 factors_pps<-complete_2015%>%
-  select(Fiscal.Period,year,Ticker,Report.Date,Return.on.Equity, Return.on.Assets,Earnings.Per.Share..Basic,Equity.Per.Share, Inflation,GDP,           ex_rate,Oil_price_quarter,CPI_Quarter,UNRATE,Adj..Close)
+  select(Fiscal.Period,year,Ticker,Report.Date,Return.on.Equity, Return.on.Assets,Earnings.Per.Share..Basic,Equity.Per.Share, Inflation,GDP,           ex_rate,Oil_price_quarter,CPI_Quarter,UNRATE,Close)
 ```
 
 
@@ -298,9 +334,12 @@ factors_pps_omit <- na.omit(factors_pps)
 
 
 
+
+
+
 ```{r}
 #factors_pps_omit is after na.omit, the dataset is to see what factors may affect stock prices.
-linear1<-lm(Adj..Close~GDP+Oil_price_quarter+ex_rate+CPI_Quarter+UNRATE+Inflation+Return.on.Assets+Return.on.Equity+Earnings.Per.Share..Basic+Equity.Per.Share,data =factors_pps_omit )
+linear1<-lm(Close~GDP+Oil_price_quarter+ex_rate+CPI_Quarter+UNRATE+Inflation+Return.on.Assets+Return.on.Equity+Earnings.Per.Share..Basic+Equity.Per.Share,data =factors_pps_omit )
 summary(linear1)
 ```
 
@@ -326,7 +365,9 @@ cor(factors_pps_omit_remdouble,method = c("pearson"))
 
 ```{r}
 library(ggcorrplot)
-ggcorrplot(cor(factors_pps_omit_remdouble))
+ggcorrplot(cor(factors_pps_omit_remdouble))+
+  ggtitle("Correlation Coefficients between variables.")
+
 ```
 
 ```{r}
@@ -335,7 +376,7 @@ vif(linear1)
 
     From the correlation plot, it shows Oil_price_quarter has a high positive correlation with Inflation. The VIF function tells Oil_price_quarter has a high VIF score. This probably be problematic due to the multicolnearity issue. Therefore, I would like to drop this variable in future models.
 ```{r}
-linear2<-lm(Adj..Close~GDP+ex_rate+CPI_Quarter+UNRATE+Inflation+Return.on.Assets+Return.on.Equity+Earnings.Per.Share..Basic+Equity.Per.Share,data =factors_pps_omit )
+linear2<-lm(Close~GDP+ex_rate+CPI_Quarter+UNRATE+Inflation+Return.on.Assets+Return.on.Equity+Earnings.Per.Share..Basic+Equity.Per.Share,data =factors_pps_omit )
 summary(linear2)
 ```
 ```{r}
@@ -343,7 +384,7 @@ vif(linear2)#Vif After deleting Oil_price
 ```
 
 ```{r}
-linear3<-lm(Adj..Close~GDP+Oil_price_quarter+ex_rate+CPI_Quarter+UNRATE+Return.on.Assets+Return.on.Equity+Earnings.Per.Share..Basic+Equity.Per.Share,data =factors_pps_omit )
+linear3<-lm(Close~GDP+Oil_price_quarter+ex_rate+CPI_Quarter+UNRATE+Return.on.Assets+Return.on.Equity+Earnings.Per.Share..Basic+Equity.Per.Share,data =factors_pps_omit )
 summary(linear3)
 ```
 ```{r}
@@ -354,7 +395,7 @@ vif(linear3) #VIF after deleting inflation
 stargazer(linear1, linear2,linear3, title="Regression Results",type = "text")
 ```
 
-    The linear 1 shows that As the adjusted R2 shows, the model explains 19.1% of the variation on
+    The linear 1 shows that adjusted R2 , the model explains 19.1% of the variation on
     stock prices. The estimated coefficients of UNRATE,EVPS,ROA, GDP, and EPS are statistically significant  of significance.
     as expected,  GDP and EPS are positive impact on stock prices. However, EVPS's negative impact on stock prices.
     However, Oil_price and CPI and inflation rate are not expected because they are not statistically significant.
@@ -366,8 +407,10 @@ stargazer(linear1, linear2,linear3, title="Regression Results",type = "text")
     
 
 
+
 ```{r}
-write_csv(cbind_daily_2015,"Predictions data.csv")
+#Run this when you need
+#write_csv(cbind_daily_2015,"Predictions data.csv")
 ```
 
 
