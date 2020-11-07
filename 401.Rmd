@@ -59,7 +59,7 @@ EMAcross_Close	<- daily_price_2014[,c("Close")]	- EMA_Close
 
 #Calculate	a	MACD	with	standard	parameters
 macd <- MACD(daily_price_2014[,c("Close")], nFast=12, nSlow=26,
-             nSig=9, percent=FALSE)
+               nSig=9, percent=FALSE)
 #Grab	just	the	signal	line	to	use	as	our	indicator
 MACDsignal	<- macd[,	2]
 ```
@@ -73,7 +73,7 @@ SMI	<- SMI[,	1]
 ```{r}
 #Commodity	Channel	Index	with	standard	parameters
 CCI	<- CCI(daily_price_2014[,c("High","Low","Close")],	n	= 14)
-#Collateralized	Mortgage	Obligation	with	standard	parameters
+#Chande Momentum Oscillator	with	standard	parameters
 CMO	<- CMO(daily_price_2014[,c("Close")],	n	= 14)
 ROC	<- ROC(daily_price_2014[,c("Close")],	n	= 2)
 ```
@@ -334,9 +334,6 @@ factors_pps_omit <- na.omit(factors_pps)
 
 
 
-
-
-
 ```{r}
 #factors_pps_omit is after na.omit, the dataset is to see what factors may affect stock prices.
 linear1<-lm(Close~GDP+Oil_price_quarter+ex_rate+CPI_Quarter+UNRATE+Inflation+Return.on.Assets+Return.on.Equity+Earnings.Per.Share..Basic+Equity.Per.Share,data =factors_pps_omit )
@@ -367,7 +364,6 @@ cor(factors_pps_omit_remdouble,method = c("pearson"))
 library(ggcorrplot)
 ggcorrplot(cor(factors_pps_omit_remdouble))+
   ggtitle("Correlation Coefficients between variables.")
-
 ```
 
 ```{r}
